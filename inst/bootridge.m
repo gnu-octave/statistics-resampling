@@ -248,6 +248,12 @@
 %            on the average number of variables selected per resample and a 
 %            stability threshold of (1 - ALPHA / 2).
 %
+%        o PCER
+%            The upper bound on the probability that any one specific coefficient
+%            identified as "stable" (i.e., exceeding the stability threshold of
+%            1 - ALPHA / 2) is a false positive. This is calculated as:
+%              PFER / (the total number of slope coefficients).
+%
 %        o RTAB
 %            Matrix summarizing residual correlations (strictly lower-
 %            triangular pairs). The columns correspond to outcome J, outcome I, 
@@ -725,6 +731,7 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
   p = q * (n - 1);
   pi_thr = 1 - alpha / 2;
   pfer = 1 / (2 * pi_thr - 1) * (q_avg^2 / p);
+  pcer = min (1, pfer / p);
 
   % Correct stability selection probabilities for the design effect
   stdnormcdf = @(x) 0.5 * (1 + erf (x / sqrt (2)));
@@ -965,6 +972,7 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
   S.pred_err = pred_err;
   S.stability = stability;
   S.PFER = pfer;
+  S.PCER = pcer;
   if (q > 1); S.RTAB = RTAB; end
   if (nargout > 1)
     YHAT = X * Beta;
