@@ -242,6 +242,12 @@
 %            summary, stability exceeding (1 - ALPHA / 2) is indicated by (+)
 %            or (-) to denote the consistent direction of the effect.
 %
+%        o PFER
+%            The upper bound on the expected number of false positive selections.
+%            This is calculated using the Meinshausen-Bühlmann theorm [6], based
+%            on the average number of variables selected per resample and a 
+%            stability threshold of (1 - ALPHA / 2).
+%
 %        o RTAB
 %            Matrix summarizing residual correlations (strictly lower-
 %            triangular pairs). The columns correspond to outcome J, outcome I, 
@@ -708,10 +714,23 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
     [lambda, iter] = kss (parsubfun, amin, bmax, tol, ncpus, isoctave);
   end
 
-  % Get the prediction error at the optimal lambda
+  % Get the prediction error and stability selection at the optimal lambda
   % Use a minimum of 1999 bootstrap resamples for stability selection
-  [pred_err, stability] = booterr632 (YS, XC, lambda, P_vec, ...
-                                      max (nboot, 1999), seed);
+  B = max (nboot, 1999);
+  [pred_err, stability, q_avg] = booterr632 (YS, XC, lambda, P_vec, B, seed);
+
+  % Per Family Error Rate (a.k.a. PFER) is the expected number of false positive
+  % of the stability selection
+  % p = q * (n - 1) (i.e. all outcomes for all predictors except the intercept)
+  p = q * (n - 1);
+  pi_thr = 1 - alpha / 2;
+  pfer = 1 / (2 * pi_thr - 1) * (q_avg^2 / p);
+
+  % Correct stability selection probabilities for the design effect
+  stdnormcdf = @(x) 0.5 * (1 + erf (x / sqrt (2)));
+  stdnorminv = @(p) sqrt (2) * erfinv (2 * p - 1);
+  z_stability = stdnorminv (stability);
+  stability = stdnormcdf (z_stability / sqrt (deff));
 
   % Heuristic correction to lambda (prior precision) for the design effect.
   % Empirical-Bayes ridge learns lambda as an inverted estimator-scale SNR:
@@ -746,12 +765,6 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
     df_lambda = m  - trace (U \ (U' \ (X' * X))); % Equivalent to m - trace (H)
   end
   df_lambda = max (df_lambda, 1);
-
-  % Correct stability selection probabilities for the design effect
-  stdnormcdf = @(x) 0.5 * (1 + erf (x / sqrt (2)));
-  stdnorminv = @(p) sqrt (2) * erfinv (2 * p - 1);
-  z_stability = stdnorminv (stability);
-  stability = stdnormcdf (z_stability / sqrt (deff));
 
   % Calculate the global, rotation‑invariant prior contribution as a percentage.
   % This is a ridge-based % prior contribution and it is relevant to the prior 
@@ -951,6 +964,7 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
   S.iter = iter;
   S.pred_err = pred_err;
   S.stability = stability;
+  S.PFER = pfer;
   if (q > 1); S.RTAB = RTAB; end
   if (nargout > 1)
     YHAT = X * Beta;
@@ -1032,7 +1046,7 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
         fprintf (cat (2, '\n Outcome %d:\n coefficient   CI_lower      ', ...
                          'CI_upper      lnBF10    SS  prior\n'), j);
         for k = 1:n
-          if (stability(k, j) >= (1 - alpha / 2))
+          if (stability(k, j) > (1 - alpha / 2))
             if (Beta(k, j) < 0)
               ss = '(-)';
             elseif (Beta(k, j) > 0)
@@ -1070,11 +1084,12 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
 end
 
 
-%--------------------------------------------------------------------------
+%-------------------------------------------------------------------------------
 
 %% FUNCTION FOR .632 BOOTSTRAP ESTIMATOR OF PREDICTION ERROR
 
-function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
+function [PRED_ERR, STABILITY, q_avg] = booterr632 (Y, X, lambda, P_vec, ...
+                                                    nboot, seed)
 
   % This function computes Efron & Tibshirani’s .632 bootstrap prediction error
   % for a multivariate linear ridge/Tikhonov model. Loss is the per-observation
@@ -1149,8 +1164,10 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
   SSE_OOB  = 0; 
   N_OOB    = 0;
   if (nargout > 1)
+    tau = sqrt (eps_X);
     Sign_obs = sign (Beta_obs);
     STABILITY = zeros (n, q);
+    q_avg = 0;
   end
   for b = 1:nboot
  
@@ -1191,7 +1208,9 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
         PRED_OOB = bsxfun (@plus, (XWo * XWi') * Alpha, my);
         if (nargout > 1)
           Beta = bsxfun (@times, P_inv_vec, (XCi' * Alpha));
-          STABILITY  = STABILITY + (sign (Beta) == Sign_obs);
+          selected = (sign (Beta) == Sign_obs) & (abs (Beta) > tau);
+          STABILITY  = STABILITY + selected;
+          q_avg = q_avg + sum (selected(:));
         end
     else
         % PRIMAL (STANDARD) SOLVE (Fast for m >= n)
@@ -1208,7 +1227,9 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
         % for each of the q outcomes
         PRED_OOB = X(o, :) * Beta;
         if (nargout > 1)
-          STABILITY  = STABILITY + (sign (Beta) == Sign_obs);
+          selected = (sign (Beta) == Sign_obs) & (abs (Beta) > tau);
+          STABILITY  = STABILITY + selected;
+          q_avg = q_avg + sum (selected(:));
         end
     end
 
@@ -1237,11 +1258,12 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
     % Convert counts to proportions, with Jeffrey's smoothing.
     STABILITY = (STABILITY + 0.5) / (nboot + 1.0);
     STABILITY(1, :) = NaN;  % Set stability selection to NaN for the intercepts
+    q_avg = q_avg / nboot;
   end
 
 end
 
-%--------------------------------------------------------------------------
+%-------------------------------------------------------------------------------
 
 % FUNCTION FOR GOLDEN-SECTION SEARCH MINIMIZATION OF AN OBJECTIVE FUNCTION
 
@@ -1346,7 +1368,7 @@ function [lambda, iter] = kss (parsubfun, a, b, tol, k, isoctave)
 
 end
 
-%--------------------------------------------------------------------------
+%-------------------------------------------------------------------------------
 
 function fx = lambda_eval (x, i, c, fxc, parsubfun)
 
@@ -1361,7 +1383,7 @@ function fx = lambda_eval (x, i, c, fxc, parsubfun)
 
 end
 
-%--------------------------------------------------------------------------
+%-------------------------------------------------------------------------------
 
 %!demo
 %!
