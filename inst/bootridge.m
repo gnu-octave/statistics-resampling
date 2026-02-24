@@ -245,14 +245,15 @@
 %        o PFER
 %            The upper bound on the expected number of false positive selections.
 %            This is calculated using the Meinshausen-Bühlmann theorm [6], based
-%            on the average number of variables selected per resample and a 
-%            stability threshold of (1 - ALPHA / 2).
+%            on the stability threshold of (1 - ALPHA / 2), and the average
+%            number of slope coefficients in all the outcomes that were selected
+%            in each resample.
 %
 %        o PCER
 %            The upper bound on the probability that any one specific coefficient
 %            identified as "stable" (i.e., exceeding the stability threshold of
 %            1 - ALPHA / 2) is a false positive. This is calculated as:
-%              PFER / (the total number of slope coefficients).
+%              PFER / (number of slope coefficients * number of outcomes).
 %
 %        o RTAB
 %            Matrix summarizing residual correlations (strictly lower-
