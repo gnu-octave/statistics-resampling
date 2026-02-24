@@ -1217,6 +1217,7 @@ function [PRED_ERR, STABILITY, q_avg] = booterr632 (Y, X, lambda, P_vec, ...
         if (nargout > 1)
           Beta = bsxfun (@times, P_inv_vec, (XCi' * Alpha));
           selected = (sign (Beta) == Sign_obs) & (abs (Beta) > tau);
+          selected (1, :) = false; % Ignore the intercept
           STABILITY  = STABILITY + selected;
           q_avg = q_avg + sum (selected(:));
         end
@@ -1236,6 +1237,7 @@ function [PRED_ERR, STABILITY, q_avg] = booterr632 (Y, X, lambda, P_vec, ...
         PRED_OOB = X(o, :) * Beta;
         if (nargout > 1)
           selected = (sign (Beta) == Sign_obs) & (abs (Beta) > tau);
+          selected (1, :) = false; % Ignore the intercept
           STABILITY  = STABILITY + selected;
           q_avg = q_avg + sum (selected(:));
         end
