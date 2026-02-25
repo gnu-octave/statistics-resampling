@@ -242,19 +242,6 @@
 %            summary, stability exceeding (1 - ALPHA / 2) is indicated by (+)
 %            or (-) to denote the consistent direction of the effect.
 %
-%        o PFER
-%            The upper bound on the expected number of false positive selections.
-%            This is calculated using the Meinshausen-Bühlmann theorm [6], based
-%            on the stability threshold of (1 - ALPHA / 2), and the average
-%            number of slope coefficients in all the outcomes that were selected
-%            in each resample.
-%
-%        o PCER
-%            The upper bound on the probability that any one specific coefficient
-%            identified as "stable" (i.e., exceeding the stability threshold of
-%            1 - ALPHA / 2) is a false positive. This is calculated as:
-%              min (PFER / (no. of slope coefficients * no. of outcomes), 1)
-%
 %        o RTAB
 %            Matrix summarizing residual correlations (strictly lower-
 %            triangular pairs). The columns correspond to outcome J, outcome I, 
@@ -724,15 +711,7 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
   % Get the prediction error and stability selection at the optimal lambda
   % Use a minimum of 1999 bootstrap resamples for stability selection
   B = max (nboot, 1999);
-  [pred_err, stability, q_avg] = booterr632 (YS, XC, lambda, P_vec, B, seed);
-
-  % Per Family Error Rate (a.k.a. PFER) is the expected number of false positive
-  % of the stability selection
-  % p = q * (n - 1) (i.e. all outcomes for all predictors except the intercept)
-  p = q * (n - 1);
-  pi_thr = 1 - alpha / 2;
-  pfer = 1 / (2 * pi_thr - 1) * (q_avg^2 / p);
-  pcer = min (pfer / p, 1);
+  [pred_err, stability] = booterr632 (YS, XC, lambda, P_vec, B, seed);
 
   % Correct stability selection probabilities for the design effect
   stdnormcdf = @(x) 0.5 * (1 + erf (x / sqrt (2)));
@@ -1097,8 +1076,7 @@ end
 
 %% FUNCTION FOR .632 BOOTSTRAP ESTIMATOR OF PREDICTION ERROR
 
-function [PRED_ERR, STABILITY, q_avg] = booterr632 (Y, X, lambda, P_vec, ...
-                                                    nboot, seed)
+function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
 
   % This function computes Efron & Tibshirani’s .632 bootstrap prediction error
   % for a multivariate linear ridge/Tikhonov model. Loss is the per-observation
@@ -1176,7 +1154,6 @@ function [PRED_ERR, STABILITY, q_avg] = booterr632 (Y, X, lambda, P_vec, ...
     tau = sqrt (eps_X);
     Sign_obs = sign (Beta_obs);
     STABILITY = zeros (n, q);
-    q_avg = 0;
   end
   for b = 1:nboot
  
@@ -1220,7 +1197,6 @@ function [PRED_ERR, STABILITY, q_avg] = booterr632 (Y, X, lambda, P_vec, ...
           selected = (sign (Beta) == Sign_obs) & (abs (Beta) > tau);
           selected (1, :) = false; % Ignore the intercept
           STABILITY  = STABILITY + selected;
-          q_avg = q_avg + sum (selected(:));
         end
     else
         % PRIMAL (STANDARD) SOLVE (Fast for m >= n)
@@ -1240,7 +1216,6 @@ function [PRED_ERR, STABILITY, q_avg] = booterr632 (Y, X, lambda, P_vec, ...
           selected = (sign (Beta) == Sign_obs) & (abs (Beta) > tau);
           selected (1, :) = false; % Ignore the intercept
           STABILITY  = STABILITY + selected;
-          q_avg = q_avg + sum (selected(:));
         end
     end
 
@@ -1269,7 +1244,6 @@ function [PRED_ERR, STABILITY, q_avg] = booterr632 (Y, X, lambda, P_vec, ...
     % Convert counts to proportions, with Jeffrey's smoothing.
     STABILITY = (STABILITY + 0.5) / (nboot + 1.0);
     STABILITY(1, :) = NaN;  % Set stability selection to NaN for the intercepts
-    q_avg = q_avg / nboot;
   end
 
 end
