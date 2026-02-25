@@ -274,7 +274,8 @@
 %      effects are shrunken toward zero, while stable effects survive the 
 %      penalty. This "Partial Pooling" ensures that Bayes factors are 
 %      appropriately conservative without the catastrophic loss of power 
-%      associated with classical post-hoc adjustments [8, 9].
+%      associated with classical post-hoc adjustments [8, 9]. See later section
+%      on STATISTICAL INFERENCE AND ERROR CONTROL.
 %
 %      PREDICTIVE OPTIMIZATION:
 %      The ridge tuning constant (hyperparameter) is selected empirically by
@@ -442,6 +443,20 @@
 %      their original scale; consequently, all posterior summaries, 
 %      credibility intervals, and prior standard deviations are reported 
 %      directly on the original coefficient scale for ease of interpretation.
+%
+%      STATISTICAL INFERENCE AND ERROR CONTROL:
+%      Inference is provided via three complementary metrics: Credibility
+%      Intervals (CIs), Bayes Factors (BFs), and Stability Selection (SS)
+%      probabilities. Conditioned on a bootstrap-optimized ridge penalty, these
+%      statistics exhibit superior control over Type M (magnitude) and Type S
+%      (sign) errors relative to unpenalized estimators. The inherent shrinkage
+%      provides some protection against Family-Wise Error Rate (FWER) inflation
+%      for CIs and BFs, maintaining conservative global error control in
+%      multiple testing contexts without explicit post-hoc adjustments.
+%      Conversely, SS probabilities prioritize statistical power in sparse or
+%      low signal-to-noise ratio (SNR) settings; while SS maintains marginal
+%      error control at alpha, it lacks the intrinsic FWER protection afforded
+%      by shrinkage when interpreting multiple simultaneous inferences.
 %
 %      See also: `bootstrp`, `boot`, `bootlm`, `bootbayes` and `bootwild`.
 %
