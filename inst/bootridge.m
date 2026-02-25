@@ -951,8 +951,6 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
   S.iter = iter;
   S.pred_err = pred_err;
   S.stability = stability;
-  S.PFER = pfer;
-  S.PCER = pcer;
   if (q > 1); S.RTAB = RTAB; end
   if (nargout > 1)
     YHAT = X * Beta;
