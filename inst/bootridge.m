@@ -446,17 +446,23 @@
 %
 %      STATISTICAL INFERENCE AND ERROR CONTROL:
 %      Inference is provided via three complementary metrics: Credibility
-%      Intervals (CIs), Bayes Factors (BFs), and Stability Selection (SS)
+%      Intervals (CI), Bayes Factors (BF), and Stability Selection (SS)
 %      probabilities. Conditioned on a bootstrap-optimized ridge penalty, these
 %      statistics exhibit superior control over Type M (magnitude) and Type S
 %      (sign) errors relative to unpenalized estimators. The inherent shrinkage
-%      provides some protection against Family-Wise Error Rate (FWER) inflation
-%      for CIs and BFs, maintaining conservative global error control in
-%      multiple testing contexts without explicit post-hoc adjustments.
-%      Conversely, SS probabilities prioritize statistical power in sparse or
-%      low signal-to-noise ratio (SNR) settings; while SS maintains marginal
-%      error control at alpha, it lacks the intrinsic FWER protection afforded
-%      by shrinkage when interpreting multiple simultaneous inferences.
+%      provides implicit False Discovery Rate (FDR) control for CIs and BFs by
+%      suppressing noise-driven inflation, providing more conservative global
+%      error control than unpenalized methods. Conversely, SS probabilities
+%      prioritize statistical power in sparse or low signal-to-noise ratio (SNR)
+%      settings; while SS maintains marginal False Positive Rate (FPR) control
+%      near ALPHA, it lacks the intrinsic FDR protection afforded by shrinkage
+%      when interpreting multiple simultaneous inferences. The reliability of
+%      all metrics improves as the Signal-to-Noise Ratio (SNR) increases. 
+%
+%                           CI           BF           SS   
+%           FDR-Controlled <----------------------------> FPR-Controlled
+%        (High Stringency)                                (High Discovery) 
+%
 %
 %      See also: `bootstrp`, `boot`, `bootlm`, `bootbayes` and `bootwild`.
 %
