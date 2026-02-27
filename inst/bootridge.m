@@ -1183,6 +1183,16 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
     o = true (m, 1);
     o(i) = false;
 
+    % Check for missing predictors in training set and remove out-of-bag
+    % samples that have those predictors
+    missing = ~ any (X(i, :), 1);
+    if any (missing)
+       o(any (X(:,missing), 2)) = false;
+    end
+
+    % Skip to next bootstrap sample if there are no out-of-bag observations
+    if (~ any(o)); continue; end
+
     % Algorithm for calculation of Beta is dependent on the data dimensions.
     % The ridge parameter, lambda, helps to prevent the system matrix from
     % becoming singular, so we can use very fast Cholesky decomposition in dual
