@@ -1191,7 +1191,7 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
     end
 
     % Skip to next bootstrap sample if there are no out-of-bag observations
-    if (~ any(o)); continue; end
+    if (~ any (o)); continue; end
 
     % Algorithm for calculation of Beta is dependent on the data dimensions.
     % The ridge parameter, lambda, helps to prevent the system matrix from
