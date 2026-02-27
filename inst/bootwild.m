@@ -350,7 +350,7 @@ function [stats, bootstat, bootsse, bootfit, Y] = bootwild (y, X, ...
     [ts, idx] = sort (abs (t), 'descend');
     % Sort the rows of T
     Ts = abs (T(idx, :));
-    %  For each step j, compute the distribution of maxT over the remaining
+    % For each step j, compute the distribution of maxT over the remaining
     % hypotheses
     maxT = cell2mat (arrayfun (@(j) max (Ts(j:end, :), [], 1), (1:p)', ...
                      'UniformOutput', false));
