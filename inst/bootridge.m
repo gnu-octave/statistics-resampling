@@ -1187,7 +1187,7 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
     % samples that have those predictors
     missing = ~ any (X(i, :), 1);
     if any (missing)
-       o(any (X(:,missing), 2)) = false;
+      o(any (X(:,missing), 2)) = false;
     end
 
     % Skip to next bootstrap sample if there are no out-of-bag observations
