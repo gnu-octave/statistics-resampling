@@ -1189,11 +1189,12 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, ...
     % If there are any categorical predictor terms, check for missing predictors
     % in training set and remove out-of-bag samples that have those predictors.
     if (~ isempty (categor))
-      missing = ~ any (X(i, :), 1);
+      missing = ~ any (X(i, categor), 1);
       if (any (missing))
-        o(any (X(:,missing), 2)) = false;
+        missing_pred = categor(missing);
+        o(any (X(:, missing_pred), 2)) = false;
       end
-    end
+    end 
 
     % Skip to next bootstrap sample if there are no out-of-bag observations
     if (~ any (o)); continue; end
