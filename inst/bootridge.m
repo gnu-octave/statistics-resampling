@@ -707,7 +707,8 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
                    ' nonzero variance.'));
   end
   parsubfun = struct ('booterr632', @booterr632, 'lambda_eval', @lambda_eval);
-  obj_func = @(lambda) parsubfun.booterr632 (YS, XC, lambda, P_vec, nboot, seed);
+  obj_func = @(lambda) parsubfun.booterr632 (YS, XC, lambda, P_vec, nboot, ...
+                                             categor, seed);
 
   % Search for the optimal lambda by .632 bootstrap prediction error
   try
@@ -732,7 +733,7 @@ function [S, Yhat, P_vec] = bootridge (Y, X, categor, nboot, alpha, L, ...
   % Get the prediction error and stability selection at the optimal lambda
   % Use a minimum of 1999 bootstrap resamples for stability selection
   B = max (nboot, 1999);
-  [pred_err, stability] = booterr632 (YS, XC, lambda, P_vec, B, seed);
+  [pred_err, stability] = booterr632 (YS, XC, lambda, P_vec, B, categor, seed);
 
   % Correct stability selection probabilities for the design effect
   stdnormcdf = @(x) 0.5 * (1 + erf (x / sqrt (2)));
@@ -1095,7 +1096,8 @@ end
 
 %% FUNCTION FOR .632 BOOTSTRAP ESTIMATOR OF PREDICTION ERROR
 
-function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
+function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, ...
+                                             categor, seed)
 
   % This function computes Efron & Tibshirani’s .632 bootstrap prediction error
   % for a multivariate linear ridge/Tikhonov model. Loss is the per-observation
@@ -1169,6 +1171,7 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
   % --- BOOTSTRAP LOOP ---
   SSE_OOB  = 0; 
   N_OOB    = 0;
+  NSAMP    = 0;
   if (nargout > 1)
     tau = sqrt (eps_X);
     Sign_obs = sign (Beta_obs);
@@ -1183,11 +1186,13 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
     o = true (m, 1);
     o(i) = false;
 
-    % Check for missing predictors in training set and remove out-of-bag
-    % samples that have those predictors
-    missing = ~ any (X(i, :), 1);
-    if any (missing)
-      o(any (X(:,missing), 2)) = false;
+    % If there are any categorical predictor terms, check for missing predictors
+    % in training set and remove out-of-bag samples that have those predictors.
+    if (~ isempty (categor))
+      missing = ~ any (X(i, :), 1);
+      if (any (missing))
+        o(any (X(:,missing), 2)) = false;
+      end
     end
 
     % Skip to next bootstrap sample if there are no out-of-bag observations
@@ -1257,6 +1262,9 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
     % Calculate and accumulate number of OOB observations
     N_OOB  = N_OOB + sum (o) ;
 
+    % Count actual bootstrap samples used
+    NSAMP = NSAMP + 1;
+
   end
 
   % Calculate pooled OOB error estimate
@@ -1271,7 +1279,7 @@ function [PRED_ERR, STABILITY] = booterr632 (Y, X, lambda, P_vec, nboot, seed)
   % Calculate stability selection
   if (nargout > 1)
     % Convert counts to proportions, with Jeffrey's smoothing.
-    STABILITY = (STABILITY + 0.5) / (nboot + 1.0);
+    STABILITY = (STABILITY + 0.5) / (NSAMP + 1.0);
     STABILITY(1, :) = NaN;  % Set stability selection to NaN for the intercepts
   end
 
